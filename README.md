@@ -1,0 +1,2 @@
+# my_first_vibe_codding_project
+TAICA 生成式AI第五周作業
