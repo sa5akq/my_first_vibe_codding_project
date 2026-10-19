@@ -1,2 +1,2 @@
-# my_first_vibe_codding_project
+# my_first_vibe_codding_project_taica_snake
 TAICA 生成式AI第五周作業
