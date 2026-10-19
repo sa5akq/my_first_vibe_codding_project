@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>極簡霓虹貪吃蛇 (Neon Snake) - TAICA 作業專案</title>
+  <meta name="description" content="TAICA Week 5 Vibe Coding 作業 - 現代極簡風格 HTML5 貪吃蛇遊戲，具備合成音效、難度調節、金蘋果獎勵、跨平台觸控支援與規格書對應。">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --primary: #10b981;
+      --primary-glow: rgba(16, 185, 129, 0.35);
+      --food-color: #f43f5e;
+      --food-glow: rgba(244, 63, 94, 0.4);
+      --bonus-color: #fbbf24;
+      --bonus-glow: rgba(251, 191, 36, 0.5);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    /* 主容器 */
+    .game-wrapper {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 頂部標題與狀態卡片 */
+    .header-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      font-size: 1.5rem;
+      filter: drop-shadow(0 0 6px var(--primary));
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #34d399, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .sound-toggle-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .sound-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.05);
+    }
+
+    /* HUD 計分儀表板 */
+    .hud-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .hud-item {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .hud-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .hud-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+    }
+
+    .hud-value.best {
+      color: var(--bonus-color);
+      text-shadow: 0 0 10px var(--bonus-glow);
+    }
+
+    /* 遊戲設定工具列 */
+    .toolbar-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .setting-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .setting-group label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    select {
+      background: #0f172a;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* 遊戲畫布舞台 */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.15);
+      background: #090d16;
+    }
+
+    #gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 限時獎勵倒數進度條 */
+    .bonus-timer-bar-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      display: none;
+    }
+
+    .bonus-timer-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      box-shadow: 0 0 8px #fbbf24;
+      transition: width 0.1s linear;
+    }
+
+    /* 遊戲遮罩 (開始/暫停/結束) */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      z-index: 10;
+      transition: opacity 0.25s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .overlay h2 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .overlay p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 9999px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 18px var(--primary-glow);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+      border: 1px solid var(--card-border);
+      padding: 8px 16px;
+      font-size: 0.85rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .score-badge {
+      display: inline-block;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: var(--bonus-color);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    /* 手機虛擬控制方向盤 (D-Pad) */
+    .dpad-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      width: 190px;
+      height: 190px;
+      margin: 6px auto 0;
+    }
+
+    .dpad-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.1s, transform 0.1s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .dpad-btn:active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: var(--primary);
+      transform: scale(0.92);
+    }
+
+    .dpad-up    { grid-column: 2; grid-row: 1; }
+    .dpad-left  { grid-column: 1; grid-row: 2; }
+    .dpad-pause { grid-column: 2; grid-row: 2; font-size: 1rem; border-radius: 50%; background: rgba(99, 102, 241, 0.2); }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+    .dpad-down  { grid-column: 2; grid-row: 3; }
+
+    /* 底部操作鍵盤說明 */
+    .controls-hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .key-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    /* 彈跳震動動畫 */
+    @keyframes pulseBonus {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    @media (min-width: 640px) {
+      .dpad-container {
+        display: none; /* 桌面端隱藏虛擬鍵盤，維持整潔 */
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-wrapper">
+    <!-- 頂部標題與設定 -->
+    <header class="header-card">
+      <div class="brand-group">
+        <span class="brand-icon">🐍</span>
+        <div>
+          <h1 class="brand-title">NEON SNAKE</h1>
+        </div>
+      </div>
+      <button id="soundToggle" class="sound-toggle-btn" title="切換音效" aria-label="切換音效">🔊</button>
+    </header>
+
+    <!-- 計分儀表板 -->
+    <section class="hud-card">
+      <div class="hud-item">
+        <span class="hud-label">當前得分 (Score)</span>
+        <span id="currentScore" class="hud-value">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">最高紀錄 (Best) 🏆</span>
+        <span id="highScore" class="hud-value best">0</span>
+      </div>
+    </section>
+
+    <!-- 工具列：難度與模式 -->
+    <section class="toolbar-card">
+      <div class="setting-group">
+        <label for="difficultySelect">遊戲難度:</label>
+        <select id="difficultySelect">
+          <option value="140">輕鬆 (Casual)</option>
+          <option value="100" selected>標準 (Normal)</option>
+          <option value="65">極速 (Hardcore)</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label for="wallModeSelect">邊界模式:</label>
+        <select id="wallModeSelect">
+          <option value="solid" selected>經典撞牆</option>
+          <option value="portal">穿牆傳送</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- 遊戲畫布與遮罩 -->
+    <div class="canvas-container">
+      <div id="bonusBarWrap" class="bonus-timer-bar-wrap">
+        <div id="bonusBar" class="bonus-timer-bar"></div>
+      </div>
+      <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+      <!-- 開始畫面遮罩 -->
+      <div id="startOverlay" class="overlay">
+        <h2>霓虹貪吃蛇</h2>
+        <p>操控蛇身吃掉霓虹蘋果，避開牆壁或穿牆挑戰高分！</p>
+        <button id="startBtn" class="btn">開始遊戲 ▶</button>
+      </div>
+
+      <!-- 暫停畫面遮罩 -->
+      <div id="pauseOverlay" class="overlay hidden">
+        <h2>遊戲已暫停</h2>
+        <p>隨時按空白鍵或下方按鈕恢復遊玩</p>
+        <button id="resumeBtn" class="btn">繼續遊戲 ▶</button>
+      </div>
+
+      <!-- 遊戲結束遮罩 -->
+      <div id="gameOverOverlay" class="overlay hidden">
+        <h2 style="color: #f43f5e;">GAME OVER</h2>
+        <div id="finalScoreBadge" class="score-badge">本次得分：0 分</div>
+        <p id="recordNotify">再接再厲，挑戰更高紀錄！</p>
+        <button id="restartBtn" class="btn">再玩一次 ↺</button>
+      </div>
+    </div>
+
+    <!-- 鍵盤操作提示 -->
+    <div class="controls-hint">
+      <span>移動: <span class="key-badge">WASD</span> / <span class="key-badge">方向鍵</span></span>
+      <span>暫停: <span class="key-badge">Space</span></span>
+      <span>重開: <span class="key-badge">R</span></span>
+    </div>
+
+    <!-- 手機虛擬控制器 (D-Pad) -->
+    <div class="dpad-container" id="dpad">
+      <button class="dpad-btn dpad-up" id="btnUp" aria-label="向上">▲</button>
+      <button class="dpad-btn dpad-left" id="btnLeft" aria-label="向左">◀</button>
+      <button class="dpad-btn dpad-pause" id="btnPause" aria-label="暫停">⏸</button>
+      <button class="dpad-btn dpad-right" id="btnRight" aria-label="向右">▶</button>
+      <button class="dpad-btn dpad-down" id="btnDown" aria-label="向下">▼</button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Retro Neon Snake - 核心遊戲引擎
+     * 符合規格書規格：單一檔案、零外部依賴、Web Audio API 合成音效、LocalStorage 最高紀錄
+     */
+
+    // --- 1. 音效引擎 (Web Audio API 合成音，避免 GitHub Pages 外部音檔 404 問題) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = localStorage.getItem('snake_sound_muted') === 'true';
+      }
+
+      initCtx() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        localStorage.setItem('snake_sound_muted', this.muted);
+        return this.muted;
+      }
+
+      playTone(freq, type, duration, endFreq = null) {
+        if (this.muted) return;
+        this.initCtx();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+          if (endFreq) {
+            osc.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + duration);
+          }
+
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          // 靜音處理瀏覽器限制
+        }
+      }
+
+      playEatNormal() {
+        this.playTone(587, 'sine', 0.1, 880); // D5 到 A5
+      }
+
+      playEatBonus() {
+        if (this.muted) return;
+        this.initCtx();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // C E G C
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.playTone(freq, 'triangle', 0.12);
+          }, idx * 60);
+        });
+      }
+
+      playGameOver() {
+        this.playTone(240, 'sawtooth', 0.45, 60); // 快速降頻鋸齒波
+      }
+
+      playClick() {
+        this.playTone(440, 'sine', 0.04);
+      }
+    }
+
+    // --- 2. 遊戲狀態機與常數 ---
+    const GRID_SIZE = 20; // 20 x 20 網格
+    const TILE_COUNT = 20;
+    const STATE = {
+      IDLE: 'IDLE',
+      PLAYING: 'PLAYING',
+      PAUSED: 'PAUSED',
+      GAME_OVER: 'GAME_OVER'
+    };
+
+    // --- 3. 遊戲主類別 ---
+    class SnakeGame {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.sound = new SoundEngine();
+
+        // DOM 元素快取
+        this.currentScoreEl = document.getElementById('currentScore');
+        this.highScoreEl = document.getElementById('highScore');
+        this.startOverlay = document.getElementById('startOverlay');
+        this.pauseOverlay = document.getElementById('pauseOverlay');
+        this.gameOverOverlay = document.getElementById('gameOverOverlay');
+        this.finalScoreBadge = document.getElementById('finalScoreBadge');
+        this.recordNotify = document.getElementById('recordNotify');
+        this.soundToggleBtn = document.getElementById('soundToggle');
+        this.difficultySelect = document.getElementById('difficultySelect');
+        this.wallModeSelect = document.getElementById('wallModeSelect');
+        this.bonusBarWrap = document.getElementById('bonusBarWrap');
+        this.bonusBar = document.getElementById('bonusBar');
+
+        // 遊戲狀態與數據
+        this.gameState = STATE.IDLE;
+        this.score = 0;
+        this.highScore = parseInt(localStorage.getItem('snake_high_score') || '0', 10);
+        this.highScoreEl.textContent = this.highScore;
+
+        // 蛇與運動邏輯
+        this.snake = [];
+        this.direction = { x: 1, y: 0 };
+        this.inputQueue = []; // 輸入緩衝區，杜絕同影格 180 度自撞 Bug
+        this.normalFood = { x: 5, y: 5 };
+        this.bonusFood = null;
+        this.bonusTimer = 0;
+        this.bonusTotalDuration = 7000; // 7 秒
+        this.bonusTimerInterval = null;
+        this.eatenCount = 0;
+
+        // 循環計時
+        this.gameInterval = null;
+        this.tickSpeed = parseInt(this.difficultySelect.value, 10);
+        this.wallMode = this.wallModeSelect.value;
+
+        this.initUI();
+        this.bindEvents();
+        this.resetGameData();
+        this.render(); // 初始渲染靜態畫面
+      }
+
+      initUI() {
+        // 音效圖示同步
+        this.soundToggleBtn.textContent = this.sound.muted ? '🔇' : '🔊';
+
+        // 從 LocalStorage 還原設定（若有）
+        const savedDiff = localStorage.getItem('snake_diff');
+        if (savedDiff) {
+          this.difficultySelect.value = savedDiff;
+          this.tickSpeed = parseInt(savedDiff, 10);
+        }
+        const savedWall = localStorage.getItem('snake_wall');
+        if (savedWall) {
+          this.wallModeSelect.value = savedWall;
+          this.wallMode = savedWall;
+        }
+      }
+
+      resetGameData() {
+        // 重設蛇位置（初始長度為 3，置中朝右）
+        this.snake = [
+          { x: 10, y: 10 },
+          { x: 9, y: 10 },
+          { x: 8, y: 10 }
+        ];
+        this.direction = { x: 1, y: 0 };
+        this.inputQueue = [];
+        this.score = 0;
+        this.eatenCount = 0;
+        this.currentScoreEl.textContent = '0';
+        this.clearBonusFood();
+        this.spawnNormalFood();
+      }
+
+      startGame() {
+        this.sound.playClick();
+        this.resetGameData();
+        this.gameState = STATE.PLAYING;
+        this.startOverlay.classList.add('hidden');
+        this.gameOverOverlay.classList.add('hidden');
+        this.pauseOverlay.classList.add('hidden');
+
+        clearInterval(this.gameInterval);
+        this.gameInterval = setInterval(() => this.gameLoop(), this.tickSpeed);
+      }
+
+      pauseGame() {
+        if (this.gameState !== STATE.PLAYING) return;
+        this.sound.playClick();
+        this.gameState = STATE.PAUSED;
+        this.pauseOverlay.classList.remove('hidden');
+        clearInterval(this.gameInterval);
+      }
+
+      resumeGame() {
+        if (this.gameState !== STATE.PAUSED) return;
+        this.sound.playClick();
+        this.gameState = STATE.PLAYING;
+        this.pauseOverlay.classList.add('hidden');
+        clearInterval(this.gameInterval);
+        this.gameInterval = setInterval(() => this.gameLoop(), this.tickSpeed);
+      }
+
+      gameOver() {
+        this.gameState = STATE.GAME_OVER;
+        clearInterval(this.gameInterval);
+        this.clearBonusFood();
+        this.sound.playGameOver();
+
+        const isNewRecord = this.score > this.highScore;
+        if (isNewRecord) {
+          this.highScore = this.score;
+          localStorage.setItem('snake_high_score', this.highScore);
+          this.highScoreEl.textContent = this.highScore;
+          this.recordNotify.textContent = '🎉 恭喜突破個人最高分紀錄！';
+          this.recordNotify.style.color = '#fbbf24';
+        } else {
+          this.recordNotify.textContent = '再接再厲，挑戰更高紀錄！';
+          this.recordNotify.style.color = 'var(--text-muted)';
+        }
+
+        this.finalScoreBadge.textContent = `本次得分：${this.score} 分`;
+        this.gameOverOverlay.classList.remove('hidden');
+      }
+
+      // --- 食物生成邏輯 ---
+      spawnNormalFood() {
+        let newPos;
+        while (true) {
+          newPos = {
+            x: Math.floor(Math.random() * TILE_COUNT),
+            y: Math.floor(Math.random() * TILE_COUNT)
+          };
+          // 確保食物不出現在蛇身或獎勵食物格上
+          const hitSnake = this.snake.some(segment => segment.x === newPos.x && segment.y === newPos.y);
+          const hitBonus = this.bonusFood && this.bonusFood.x === newPos.x && this.bonusFood.y === newPos.y;
+          if (!hitSnake && !hitBonus) break;
+        }
+        this.normalFood = newPos;
+      }
+
+      spawnBonusFood() {
+        if (this.bonusFood) return; // 已經存在則不重複出現
+        let newPos;
+        while (true) {
+          newPos = {
+            x: Math.floor(Math.random() * TILE_COUNT),
+            y: Math.floor(Math.random() * TILE_COUNT)
+          };
+          const hitSnake = this.snake.some(segment => segment.x === newPos.x && segment.y === newPos.y);
+          const hitNormal = this.normalFood.x === newPos.x && this.normalFood.y === newPos.y;
+          if (!hitSnake && !hitNormal) break;
+        }
+
+        this.bonusFood = newPos;
+        this.bonusBarWrap.style.display = 'block';
+        this.bonusBar.style.width = '100%';
+        const startTime = Date.now();
+
+        clearInterval(this.bonusTimerInterval);
+        this.bonusTimerInterval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const remainingPct = Math.max(0, 100 - (elapsed / this.bonusTotalDuration) * 100);
+          this.bonusBar.style.width = remainingPct + '%';
+
+          if (elapsed >= this.bonusTotalDuration) {
+            this.clearBonusFood();
+          }
+        }, 100);
+      }
+
+      clearBonusFood() {
+        this.bonusFood = null;
+        clearInterval(this.bonusTimerInterval);
+        this.bonusBarWrap.style.display = 'none';
+      }
+
+      // --- 核心更新循環 (Tick) ---
+      gameLoop() {
+        if (this.gameState !== STATE.PLAYING) return;
+
+        // 1. 處理佇列中的輸入轉向（防止 180 度即時反向自殺）
+        if (this.inputQueue.length > 0) {
+          const nextDir = this.inputQueue.shift();
+          if (nextDir.x !== -this.direction.x && nextDir.y !== -this.direction.y) {
+            this.direction = nextDir;
+          }
+        }
+
+        // 2. 計算新頭部位置
+        let newHead = {
+          x: this.snake[0].x + this.direction.x,
+          y: this.snake[0].y + this.direction.y
+        };
+
+        // 3. 處理邊界碰撞模式
+        if (this.wallMode === 'portal') {
+          // 穿牆模式
+          if (newHead.x < 0) newHead.x = TILE_COUNT - 1;
+          if (newHead.x >= TILE_COUNT) newHead.x = 0;
+          if (newHead.y < 0) newHead.y = TILE_COUNT - 1;
+          if (newHead.y >= TILE_COUNT) newHead.y = 0;
+        } else {
+          // 經典撞牆死亡
+          if (newHead.x < 0 || newHead.x >= TILE_COUNT || newHead.y < 0 || newHead.y >= TILE_COUNT) {
+            this.gameOver();
+            return;
+          }
+        }
+
+        // 4. 自身碰撞檢測
+        const selfCollision = this.snake.some(segment => segment.x === newHead.x && segment.y === newHead.y);
+        if (selfCollision) {
+          this.gameOver();
+          return;
+        }
+
+        // 5. 前進蛇頭
+        this.snake.unshift(newHead);
+
+        // 6. 吃食物判定
+        let grew = false;
+        if (newHead.x === this.normalFood.x && newHead.y === this.normalFood.y) {
+          // 吃到普通蘋果
+          this.score += 10;
+          this.eatenCount++;
+          this.currentScoreEl.textContent = this.score;
+          this.sound.playEatNormal();
+          this.spawnNormalFood();
+          grew = true;
+
+          // 觸發限時金色星星機制（每吃 5 顆有 60% 機率出現）
+          if (this.eatenCount % 5 === 0 && Math.random() < 0.6) {
+            this.spawnBonusFood();
+          }
+        } else if (this.bonusFood && newHead.x === this.bonusFood.x && newHead.y === this.bonusFood.y) {
+          // 吃到金色幸運星
+          this.score += 50;
+          this.currentScoreEl.textContent = this.score;
+          this.sound.playEatBonus();
+          this.clearBonusFood();
+          grew = true;
+        }
+
+        // 若沒吃到食物，移除蛇尾
+        if (!grew) {
+          this.snake.pop();
+        }
+
+        // 7. 畫面重繪
+        this.render();
+      }
+
+      // --- 繪製畫布 ---
+      render() {
+        const { ctx, canvas } = this;
+        const width = canvas.width;
+        const height = canvas.height;
+        const tile = width / TILE_COUNT;
+
+        // 清空背景
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(0, 0, width, height);
+
+        // 繪製細緻網格背景線
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= TILE_COUNT; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * tile, 0);
+          ctx.lineTo(i * tile, height);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, i * tile);
+          ctx.lineTo(width, i * tile);
+          ctx.stroke();
+        }
+
+        // 繪製普通紅蘋果 (霓虹發光圓形 + 小綠葉)
+        const fx = this.normalFood.x * tile + tile / 2;
+        const fy = this.normalFood.y * tile + tile / 2;
+        const fr = tile / 2.3;
+
+        ctx.save();
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 葉子
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.ellipse(fx + 2, fy - fr + 1, 3, 2, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 繪製金色星星/幸運獎勵 (若存在)
+        if (this.bonusFood) {
+          const bx = this.bonusFood.x * tile + tile / 2;
+          const by = this.bonusFood.y * tile + tile / 2;
+          ctx.save();
+          ctx.shadowColor = '#fbbf24';
+          ctx.shadowBlur = 16;
+          ctx.fillStyle = '#fbbf24';
+
+          // 繪製五角星
+          this.drawStar(ctx, bx, by, 5, tile / 2.2, tile / 4.5);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 繪製蛇身
+        this.snake.forEach((seg, index) => {
+          const sx = seg.x * tile;
+          const sy = seg.y * tile;
+          const isHead = index === 0;
+
+          ctx.save();
+          if (isHead) {
+            // 蛇頭：螢光碧綠、帶發光效果
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = '#34d399';
+            this.roundRect(ctx, sx + 1, sy + 1, tile - 2, tile - 2, 6);
+            ctx.fill();
+
+            // 繪製蛇的眼睛（根據目前行進方向定位）
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#0f172a';
+            const eyeOffset = 4;
+            const eyeSize = 2.5;
+
+            let eye1 = { x: sx + 5, y: sy + 5 };
+            let eye2 = { x: sx + tile - 5, y: sy + 5 };
+
+            if (this.direction.x === 1) { // 向右
+              eye1 = { x: sx + tile - 5, y: sy + 5 };
+              eye2 = { x: sx + tile - 5, y: sy + tile - 5 };
+            } else if (this.direction.x === -1) { // 向左
+              eye1 = { x: sx + 5, y: sy + 5 };
+              eye2 = { x: sx + 5, y: sy + tile - 5 };
+            } else if (this.direction.y === 1) { // 向下
+              eye1 = { x: sx + 5, y: sy + tile - 5 };
+              eye2 = { x: sx + tile - 5, y: sy + tile - 5 };
+            } else if (this.direction.y === -1) { // 向上
+              eye1 = { x: sx + 5, y: sy + 5 };
+              eye2 = { x: sx + tile - 5, y: sy + 5 };
+            }
+
+            ctx.beginPath();
+            ctx.arc(eye1.x, eye1.y, eyeSize, 0, Math.PI * 2);
+            ctx.arc(eye2.x, eye2.y, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // 蛇身節點：依序漸變淡化，增添立體感
+            const alpha = Math.max(0.4, 1 - (index / (this.snake.length + 10)));
+            ctx.fillStyle = `rgba(16, 185, 129, ${alpha})`;
+            this.roundRect(ctx, sx + 2, sy + 2, tile - 4, tile - 4, 4);
+            ctx.fill();
+          }
+          ctx.restore();
+        });
+      }
+
+      // 輔助繪製圓角矩形
+      roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+      }
+
+      // 輔助繪製五角星
+      drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        let step = Math.PI / spikes;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+          x = cx + Math.cos(rot) * outerRadius;
+          y = cy + Math.sin(rot) * outerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+
+          x = cx + Math.cos(rot) * innerRadius;
+          y = cy + Math.sin(rot) * innerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+      }
+
+      // --- 操作事件監聽 ---
+      enqueueDirection(newDir) {
+        // 取得佇列最後一個方向或目前行進方向
+        const lastDir = this.inputQueue.length > 0
+          ? this.inputQueue[this.inputQueue.length - 1]
+          : this.direction;
+
+        // 避免重複或反向輸入
+        if (newDir.x !== lastDir.x && newDir.y !== lastDir.y) {
+          if (this.inputQueue.length < 3) {
+            this.inputQueue.push(newDir);
+          }
+        }
+      }
+
+      bindEvents() {
+        // 鍵盤操控
+        window.addEventListener('keydown', (e) => {
+          const key = e.key.toLowerCase();
+
+          // 避免方向鍵與空白鍵滾動網頁
+          if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) {
+            e.preventDefault();
+          }
+
+          if (this.gameState === STATE.PLAYING) {
+            if (key === 'arrowup' || key === 'w') {
+              this.enqueueDirection({ x: 0, y: -1 });
+            } else if (key === 'arrowdown' || key === 's') {
+              this.enqueueDirection({ x: 0, y: 1 });
+            } else if (key === 'arrowleft' || key === 'a') {
+              this.enqueueDirection({ x: -1, y: 0 });
+            } else if (key === 'arrowright' || key === 'd') {
+              this.enqueueDirection({ x: 1, y: 0 });
+            } else if (key === ' ' || key === 'escape') {
+              this.pauseGame();
+            }
+          } else if (this.gameState === STATE.PAUSED) {
+            if (key === ' ' || key === 'escape') {
+              this.resumeGame();
+            }
+          } else if (this.gameState === STATE.GAME_OVER || this.gameState === STATE.IDLE) {
+            if (key === ' ' || key === 'enter' || key === 'r') {
+              this.startGame();
+            }
+          }
+        });
+
+        // 觸控手勢滑動 (Swipe)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        this.canvas.addEventListener('touchstart', (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', (e) => {
+          if (this.gameState !== STATE.PLAYING) return;
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const dx = touchEndX - touchStartX;
+          const dy = touchEndY - touchStartY;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          if (Math.max(absDx, absDy) > 25) { // 滑動閾值
+            if (absDx > absDy) {
+              this.enqueueDirection({ x: dx > 0 ? 1 : -1, y: 0 });
+            } else {
+              this.enqueueDirection({ x: 0, y: dy > 0 ? 1 : -1 });
+            }
+          }
+        }, { passive: true });
+
+        // 虛擬 D-Pad 按鈕
+        document.getElementById('btnUp').addEventListener('click', () => this.enqueueDirection({ x: 0, y: -1 }));
+        document.getElementById('btnDown').addEventListener('click', () => this.enqueueDirection({ x: 0, y: 1 }));
+        document.getElementById('btnLeft').addEventListener('click', () => this.enqueueDirection({ x: -1, y: 0 }));
+        document.getElementById('btnRight').addEventListener('click', () => this.enqueueDirection({ x: 1, y: 0 }));
+        document.getElementById('btnPause').addEventListener('click', () => {
+          if (this.gameState === STATE.PLAYING) this.pauseGame();
+          else if (this.gameState === STATE.PAUSED) this.resumeGame();
+        });
+
+        // 介面按鈕
+        document.getElementById('startBtn').addEventListener('click', () => this.startGame());
+        document.getElementById('resumeBtn').addEventListener('click', () => this.resumeGame());
+        document.getElementById('restartBtn').addEventListener('click', () => this.startGame());
+
+        // 音效開關切換
+        this.soundToggleBtn.addEventListener('click', () => {
+          const isMuted = this.sound.toggleMute();
+          this.soundToggleBtn.textContent = isMuted ? '🔇' : '🔊';
+        });
+
+        // 難度切換
+        this.difficultySelect.addEventListener('change', (e) => {
+          this.tickSpeed = parseInt(e.target.value, 10);
+          localStorage.setItem('snake_diff', this.tickSpeed);
+          if (this.gameState === STATE.PLAYING) {
+            clearInterval(this.gameInterval);
+            this.gameInterval = setInterval(() => this.gameLoop(), this.tickSpeed);
+          }
+        });
+
+        // 牆壁模式切換
+        this.wallModeSelect.addEventListener('change', (e) => {
+          this.wallMode = e.target.value;
+          localStorage.setItem('snake_wall', this.wallMode);
+        });
+      }
+    }
+
+    // 初始化啟動
+    window.addEventListener('DOMContentLoaded', () => {
+      window.gameInstance = new SnakeGame();
+    });
+  </script>
+</body>
+</html>
